@@ -1,0 +1,21 @@
+{{ define "telegram.default" }}
+{{ range .Alerts }}
+
+{{ if eq .Status "firing"}}<b>Alert Created</b> 😱{{ else }}<b>Alert Resolved</b> 😍{{ end }}
+{{- if eq .Labels.dns_hostname "" }}
+<b>Host:</b> {{ .Labels.instance }}
+{{- else }}
+<b>Host:</b> {{ .Labels.dns_hostname }}
+{{- end }}
+<b>Alert Name:</b> {{ .Labels.alertname }}
+{{- if eq .Status "firing" }}
+<b>Status:</b> {{ .Labels.severity }} ⚡️
+<b>Summary:</b> {{ .Annotations.summary }}
+<b>Started:</b> {{ .StartsAt }}
+{{ else }}
+<b>Status:</b> OK 👍
+<b>Summary:</b> {{ .Annotations.summary_resolved }}
+<b>Ended:</b> {{ .EndsAt }}
+{{ end }}
+{{- end }}
+{{- end }}

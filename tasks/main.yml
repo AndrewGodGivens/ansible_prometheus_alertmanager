@@ -1,0 +1,59 @@
+---
+- name: Ensure config directory
+  file:
+    state: directory
+    path: "{{ item }}"
+    mode: 0755
+    owner: root
+    group: root
+  with_items:
+    - "{{ alertmanager_config_dir }}"
+    - "{{ alertmanager_config_dir }}/template"
+
+- name: Ensure notification template config
+  copy:
+    src: template/telegram.tmpl
+    dest: "{{ alertmanager_config_dir }}/template/telegram.tmpl"
+    mode: 0644
+    owner: root
+    group: root
+  notify:
+    - Reload alertmanager
+  register: template_config
+
+- name: Ensure configuration file
+  template:
+    src: alertmanager.yml.j2
+    dest: "{{ alertmanager_config_dir }}/alertmanager.yml"
+    mode: 0755
+    owner: root
+    group: root
+  notify:
+    - Reload alertmanager
+  register: alertmanager_config
+
+- name: Start docker alertmanager container
+  community.docker.docker_compose:
+    state: present
+    project_name: alertmanager
+    restarted: "{{ 'yes' if alertmanager_config.changed else 'no' }}"
+    definition:
+      version: '2'
+      services:
+        alertmanager:
+          image: "{{ alertmanager_docker_image }}"
+          container_name: "{{ alertmanager_container_name }}"
+          command: "{{ alertmanager_command }}"
+          ports:
+            - "127.0.0.1:9093:9093"
+            - "127.0.0.1:9094:9094"
+            - "127.0.0.1:9094:9094/udp"
+          volumes:
+            - "{{ alertmanager_config_dir }}/:/etc/alertmanager"
+          hostname: "{{ alertmanager_container_name }}"
+          restart: always
+          labels: "{{ alertmanager_docker_labels }}"
+      networks:
+        default:
+          external:
+            name: "{{ alertmanager_docker_network_name }}"
